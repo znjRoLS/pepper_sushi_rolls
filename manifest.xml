@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<package version="0.0.1" uuid="superrapp2">
+ <names>
+  <name lang="en_US">superapp2</name>
+  <name lang="fi_FI">trainingapp</name>
+ </names>
+ <supportedLanguages>
+  <language>en_US</language>
+ </supportedLanguages>
+ <descriptionLanguages>
+  <language>en_US</language>
+  <language>fi_FI</language>
+ </descriptionLanguages>
+ <contents>
+  <behaviorContent path="behavior_1">
+   <userRequestable/>
+   <nature>interactive</nature>
+   <permissions/>
+  </behaviorContent>
+  <dialogContent topicName="basicChannelDialog" typeVersion="1.0">
+   <topic language="en_US" path="basicChannelDialog/basicChannelDialog_enu.top"/>
+  </dialogContent>
+ </contents>
+ <services>
+  <service name="DemoService" autorun="false" execStart="demo-service.py"/>
+ </services>
+ <executableFiles>
+  <file path="demo-service.py"/>
+ </executableFiles>
+</package>

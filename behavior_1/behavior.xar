@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8" ?><ChoregrapheProject xmlns="http://www.aldebaran-robotics.com/schema/choregraphe/project.xsd" xar_version="3"><Box name="root" id="-1" localization="8" tooltip="Root box of Choregraphe&apos;s behavior. Highest level possible." x="0" y="0"><bitmap>media/images/box/root.png</bitmap><script language="4"><content><![CDATA[]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /><Timeline enable="0"><BehaviorLayer name="behavior_layer1"><BehaviorKeyframe name="keyframe1" index="1"><Diagram><Box name="Launch Box" id="3" localization="8" tooltip="Runs a script attached to the project" x="215" y="160"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    script_id = "UNDEFINED"
+    def onLoad(self):
+        self.listener_id = None
+        self.script_manager = self.session().service("ALServiceManager")
+        self.script_id = self.packageUid() + "." + self.getParameter("Script Name")
+        # In some old versions of 2.3, the package.script syntax doesn't work, so use this:
+        # self.script_id = self.getParameter("Script Name")
+        # (you will get name conflicts if you have many apps...)
+
+    def disconnect(self):
+        try:
+            self.script_manager.serviceStopped.disconnect(self.listener_id)
+        except Exception as e:
+            pass
+
+    def onUnload(self):
+        self.script_manager.stopService(self.script_id)
+        self.disconnect()
+
+    def onInput_onStart(self):
+        self.listener_id = self.script_manager.serviceStopped.connect(self.onScriptStopped)
+        if not self.script_manager.startService(self.script_id):
+            self.log("Failed to start App Script %s, stopping." % repr(self.script_id))
+            self.onStopped()
+            self.disconnect()
+
+    def onScriptStopped(self, script_name, reason):
+        if script_name == self.script_id:
+            self.log("App Script Stopped: " + self.script_id)
+            self.onStopped()
+            self.disconnect()
+
+    def onInput_onStop(self):
+        self.onUnload()
+        self.onStopped()]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /><Parameter name="Script Name" inherits_from_parent="0" content_type="3" value="DemoService" default_value="main" custom_choice="0" tooltip="Name of the Script to run, as declared in the manifest (the app ID will be automatically added by the system)" id="5" /></Box><Box name="Goto Posture (1)" id="2" localization="8" tooltip="The robot goes from its current postition to the asked posture." x="244" y="342"><bitmap>media/images/box/box-diagram.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+
+    def onLoad(self):
+        self.nTries = 0
+        self.postureProxy = ALProxy("ALRobotPosture")
+        pass
+
+    def onUnload(self):
+        self.postureProxy.stopMove()
+
+    def onInput_onStart(self):
+        if(self.nTries != self.getParameter("Maximum of tries")):
+            self.nTries = self.getParameter("Maximum of tries")
+            self.postureProxy.setMaxTryNumber(self.nTries)
+
+        result = self.postureProxy.goToPosture(self.getParameter("Name"), self.getParameter("Speed (%)")/100.)
+        if(result):
+            self.success()
+        else:
+            self.failure()
+        pass
+
+    def onInput_onStop(self):
+        self.onUnload() #~ it is recommanded to call onUnload of this box in a onStop method, as the code written in onUnload is used to stop the box as well
+        pass]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="success" type="1" type_size="1" nature="1" inner="0" tooltip="Stimulated if the posture has been reached." id="4" /><Output name="failure" type="1" type_size="1" nature="1" inner="0" tooltip="Stimulated if the posture could not be reached." id="5" /><Parameter name="Name" inherits_from_parent="0" content_type="3" value="Stand" default_value="Stand" custom_choice="1" tooltip="Name of the posture to go to." id="6"><Choice value="Crouch" /><Choice value="LyingBack" /><Choice value="LyingBelly" /><Choice value="Sit" /><Choice value="SitRelax" /><Choice value="StandInit" /><Choice value="Stand" /><Choice value="StandZero" /></Parameter><Parameter name="Speed (%)" inherits_from_parent="0" content_type="1" value="80" default_value="80" min="0" max="100" tooltip="Speed to go to the posture." id="7" /><Parameter name="Maximum of tries" inherits_from_parent="0" content_type="1" value="3" default_value="3" min="1" max="10" tooltip="The maximum number of fails of go to posture before stimulating the failure output." id="8" /><Resource name="All motors" type="Lock" timeout="0" /><Resource name="Stiffness" type="Lock" timeout="0" /></Box><Box name="testpajton" id="1" localization="8" tooltip="" x="608" y="154"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[
+import httplib, urllib, urllib2, json
+import base64
+
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+
+    def onLoad(self):
+        #put initialization code here
+        pass
+
+    def onUnload(self):
+        #put clean-up code here
+        pass
+
+
+    def send_req(self, data = None):
+        #params = urllib.urlencode({'data': data})
+        #self.logger.info("sent: " + params)
+        #headers = {"Content-type": "application/json",
+        #        "Accept": "text/plain"}
+        #conn = httplib.HTTPConnection("mlgpu1.bitville.com:8888")
+        #conn.request("POST", "/telo", params, headers)
+        #response = conn.getresponse()
+        #print response.status, response.reason
+
+        json_data = {
+            'data': data
+        }
+
+        req = urllib2.Request('http://mlgpu1.bitville.com:8888/telo')
+        req.add_header('Content-Type', 'application/json')
+
+        response = urllib2.urlopen(req, json.dumps(json_data))
+
+        self.logger.info("sent: " + json.dumps(json_data))
+        #self.logger.info("neki info")
+        rispons = response.read()
+        self.logger.info("received: " + rispons)
+
+        return rispons
+
+
+    def send_image(self):
+        cameraProxy = ALProxy("ALVideoDevice");
+
+        subscriberID = "subscriberID";
+        fps = 5;
+        kvga = 2;
+        krgb = 11;
+
+        subscriberID = cameraProxy.subscribe(subscriberID, kvga, krgb, fps)
+
+        time.sleep(5.0)
+
+        images = cameraProxy.getImagesLocal(subscriberID)
+        self.logger.info( images )
+
+        if images is not None:
+            self.logger.info(images[0].getData())
+            send_req(images[0].getData())
+
+        cameraProxy.releaseImage(subscriberID)
+        cameraProxy.unsubscribe(subscriberID)
+
+    def send_local_image(self):
+        fajl = open("testpath/testpic.jpg", "rb")
+
+        return_text = self.send_req(base64.b64encode(fajl.read()))
+        self.move_hand(return_text)
+
+    def move_hand(self, angle = "1.0"):
+        motion_service = ALProxy("ALMotion");
+
+        angle = float(angle)
+
+        names            = "LElbowRoll"
+        useSensors    = False
+        commandAngles = motion_service.getAngles(names, useSensors)
+
+        # motion_service.setStiffnesses("LArm", 1.0)
+
+        # Simple command for the HeadYaw joint at 10% max speed
+
+        angles           = commandAngles[0] - angle
+        fractionMaxSpeed = 0.05
+        motion_service.setAngles(names,angles,fractionMaxSpeed)
+
+        self.logger.info("current comangle: " + str(commandAngles[0]))
+        self.logger.info("next    comangle: " + str(angles))
+
+
+    def mock_local_send_image(self):
+        fajl = open("/Users/rols/pic_test.jpg", "rb")
+
+        return_text = self.send_req(base64.b64encode(fajl.read()))
+        self.move_hand(return_text)
+
+    def mock_local_send_images(self):
+        pictures = []
+        for photo in ['photo1.jpg', 'photo2.jpg', 'photo3.jpg', 'photo4.jpg', 'photo5.jpg', 'photo6.jpg']:
+            fajl = open("/Users/rols/test pictures/" + photo)
+            pictures.append((base64.b64encode(fajl.read())))
+            #pictures.append(("a"))
+
+        self.send_req(pictures)
+
+    def onInput_onStart(self):
+        #self.onStopped() #activate the output of the box
+        """
+        Use case of transformInterpolations API.
+        """
+        # Get the services ALMotion & ALRobotPosture.
+
+        #time.sleep(3.0)
+        #motion_service.setStiffnesses("Head", 0.0)
+
+
+        self.mock_local_send_images()
+        #self.mock_local_send_image()
+        #self.send_local_image()
+
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /></Box><Box name="Take Picture" id="4" localization="8" tooltip="Take a picture with one of the cameras camera and store it in his memory in ~/recordings/cameras. The image format is JPG.&#x0A;&#x0A;V1.1.0&#x0A;" x="415" y="81"><bitmap>media/images/box/interaction/picture.png</bitmap><script language="4"><content><![CDATA[import time
+
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+        self.resolutionMap = {
+            '160 x 120': 0,
+            '320 x 240': 1,
+            '640 x 480': 2,
+            '1280 x 960': 3
+        }
+        self.cameraMap = {
+            'Top': 0,
+            'Bottom': 1
+        }
+
+        self.recordFolder = "/home/nao/recordings/cameras/"
+
+    def onLoad(self):
+        self.bIsRunning = False
+        try:
+            self.photoCapture = ALProxy( "ALPhotoCapture" )
+        except Exception as e:
+            self.photoCapture = None
+            self.logger.error(e)
+
+    def onUnload(self):
+        pass
+
+    def onInput_onStart(self):
+        if( self.bIsRunning ):
+            return
+        self.bIsRunning = True
+        resolution = self.resolutionMap[self.getParameter("Resolution")]
+        cameraID = self.cameraMap[self.getParameter("Camera")]
+        fileName = "testpicture"
+        if self.photoCapture:
+            self.photoCapture.setResolution(resolution)
+            self.photoCapture.setCameraID(cameraID)
+            self.photoCapture.setPictureFormat("jpg")
+            self.photoCapture.takePicture( "testpath/", "testpic.jpg" )
+
+        #fajl = open("testpath/testpic.jpg", "rb")
+
+        self.bIsRunning = False
+        self.onStopped()]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="3" /><Parameter name="Resolution" inherits_from_parent="0" content_type="3" value="640 x 480" default_value="640 x 480" custom_choice="0" tooltip="Image resolution." id="4"><Choice value="160 x 120" /><Choice value="320 x 240" /><Choice value="640 x 480" /><Choice value="1280 x 960" /></Parameter><Parameter name="File Name" inherits_from_parent="0" content_type="3" value="image" default_value="image" custom_choice="0" tooltip="Name of the file without its extension." id="5" /><Parameter name="Camera" inherits_from_parent="0" content_type="3" value="Top" default_value="Top" custom_choice="0" tooltip="Enables to select the camera (Top or Bottom) that will take the picture." id="6"><Choice value="Top" /><Choice value="Bottom" /></Parameter></Box><Link inputowner="3" indexofinput="2" outputowner="0" indexofoutput="2" /><Link inputowner="2" indexofinput="2" outputowner="0" indexofoutput="2" /><Link inputowner="1" indexofinput="2" outputowner="4" indexofoutput="3" /><Link inputowner="1" indexofinput="2" outputowner="2" indexofoutput="4" /></Diagram></BehaviorKeyframe></BehaviorLayer></Timeline></Box></ChoregrapheProject>

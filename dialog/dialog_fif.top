@@ -1,0 +1,12 @@
+topic: ~dialog()
+language: fif
+
+u: (ohjelma [jatku jatkuu])
+    Todennakoisesti! Haluatko lisaa?
+    
+    u1: (joo)
+        Ohjelma jatkuu edelleen.
+    
+    u2: (ei)
+        Loppuu
+        $DemoService/exit=1

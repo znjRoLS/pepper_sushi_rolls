@@ -1,0 +1,16 @@
+topic: ~dialog()
+language: enu
+
+#include: lexicon_enu.top
+concept: (yes) [yes sure "why not" ok]
+concept: (no) [no "do not" dont]
+
+u: (start training dialog)
+    Training dialog started. \pau=500\ Would you like to continue?
+    
+    u1: (~yes)
+        Let's never end this app!
+    
+    u2: (~no)
+        Let's end this.
+        $DemoService/exit=1
