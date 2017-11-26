@@ -62,6 +62,8 @@
         pass]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="success" type="1" type_size="1" nature="1" inner="0" tooltip="Stimulated if the posture has been reached." id="4" /><Output name="failure" type="1" type_size="1" nature="1" inner="0" tooltip="Stimulated if the posture could not be reached." id="5" /><Parameter name="Name" inherits_from_parent="0" content_type="3" value="Stand" default_value="Stand" custom_choice="1" tooltip="Name of the posture to go to." id="6"><Choice value="Crouch" /><Choice value="LyingBack" /><Choice value="LyingBelly" /><Choice value="Sit" /><Choice value="SitRelax" /><Choice value="StandInit" /><Choice value="Stand" /><Choice value="StandZero" /></Parameter><Parameter name="Speed (%)" inherits_from_parent="0" content_type="1" value="80" default_value="80" min="0" max="100" tooltip="Speed to go to the posture." id="7" /><Parameter name="Maximum of tries" inherits_from_parent="0" content_type="1" value="3" default_value="3" min="1" max="10" tooltip="The maximum number of fails of go to posture before stimulating the failure output." id="8" /><Resource name="All motors" type="Lock" timeout="0" /><Resource name="Stiffness" type="Lock" timeout="0" /></Box><Box name="testpajton" id="1" localization="8" tooltip="" x="608" y="154"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[
 import httplib, urllib, urllib2, json
 import base64
+import numpy as np
+import math
 
 class MyClass(GeneratedClass):
     def __init__(self):
@@ -95,12 +97,12 @@ class MyClass(GeneratedClass):
 
         response = urllib2.urlopen(req, json.dumps(json_data))
 
-        self.logger.info("sent: " + json.dumps(json_data))
+        #self.logger.info("sent: " + json.dumps(json_data))
         #self.logger.info("neki info")
-        rispons = response.read()
-        self.logger.info("received: " + rispons)
+        # rispons = response.read()
+        #self.logger.info("received: " + rispons)
 
-        return rispons
+        return json.load(response)
 
 
     def send_image(self):
@@ -131,12 +133,77 @@ class MyClass(GeneratedClass):
         return_text = self.send_req(base64.b64encode(fajl.read()))
         self.move_hand(return_text)
 
-    def move_hand(self, angle = "1.0"):
+    def move_elbow(self, angle, relative_len):
         motion_service = ALProxy("ALMotion");
 
         angle = float(angle)
 
-        names            = "LElbowRoll"
+        upside = angle > 3.14
+
+        if upside:
+            angle = 6.28 - angle
+
+        angle = 3.14 - angle
+
+        #kosinus = cos(angle)
+
+
+
+        names         = "RElbowRoll"
+        useSensors    = False
+        commandAngles = motion_service.getAngles(names, useSensors)
+
+        # motion_service.setStiffnesses("LArm", 1.0)
+        # Simple command for the HeadYaw joint at 10% max speed
+
+        fractionMaxSpeed = 0.05
+
+        angles           = angle
+
+        self.logger.info("current comangle: " + str(commandAngles[0]))
+        self.logger.info("next    comangle: " + str(angles))
+
+        motion_service.setAngles(names,angles,fractionMaxSpeed)
+
+
+        if (relatative_len > 1):
+            return
+
+        ugao_onaj_okretanje = np.arccos(relative_len)
+
+        if not upside:
+            ugao_onaj_okretanje *= -1
+            ugao_onaj_okretanje = -1.57 -ugao_onaj_okretanje
+        else:
+            ugao_onaj_okretanje = 1.57 - ugao_onaj_okretanje
+
+        ugao_onaj_okretanje += 1.57
+
+        if math.isnan(ugao_onaj_okretanje):
+            return
+
+        names         = "RElbowYaw"
+        useSensors    = False
+        commandAngles = motion_service.getAngles(names, useSensors)
+
+        # motion_service.setStiffnesses("LArm", 1.0)
+        # Simple command for the HeadYaw joint at 10% max speed
+
+        fractionMaxSpeed = 0.05
+
+        angles           = ugao_onaj_okretanje
+
+        self.logger.info("current comangle: " + str(commandAngles[0]))
+        self.logger.info("next    comangle: " + str(angles))
+
+        motion_service.setAngles(names,ugao_onaj_okretanje,fractionMaxSpeed)
+
+    def move_shoulder(self, angle):
+        motion_service = ALProxy("ALMotion");
+
+        angle = float(angle)
+
+        names            = "RShoulderRoll"
         useSensors    = False
         commandAngles = motion_service.getAngles(names, useSensors)
 
@@ -144,8 +211,9 @@ class MyClass(GeneratedClass):
 
         # Simple command for the HeadYaw joint at 10% max speed
 
-        angles           = commandAngles[0] - angle
         fractionMaxSpeed = 0.05
+
+        angles           = angle
         motion_service.setAngles(names,angles,fractionMaxSpeed)
 
         self.logger.info("current comangle: " + str(commandAngles[0]))
@@ -158,6 +226,69 @@ class MyClass(GeneratedClass):
         return_text = self.send_req(base64.b64encode(fajl.read()))
         self.move_hand(return_text)
 
+    def dist(self, x1, y1, x2, y2):
+        self.logger.info("x1 " + str(x1) + " y1 " + str(y1) + " x2 " + str(x2) + " y2 " + str(y2))
+        dx = x2 - x1
+        dy = y2 - y1
+        return dx**2 + dy**2
+
+    def filter_poses(self, poses):
+        new_poses = []
+        for pose in poses:
+            max_shoulder_dist = 0
+            max_shoulder_ind = 0
+            self.logger.info(pose)
+            for ind in xrange(len(pose["people"])):
+                human = pose["people"][ind]
+                if (human["pose_keypoints"][6] == 0 and human["pose_keypoints"][7] == 0):
+                    continue
+                if (human["pose_keypoints"][15] == 0 and human["pose_keypoints"][16] == 0):
+                    continue
+                current_dist = self.dist(human["pose_keypoints"][6], human["pose_keypoints"][7], human["pose_keypoints"][15], human["pose_keypoints"][16])
+                self.logger.info("current dist: " + str(current_dist))
+                if current_dist > max_shoulder_dist:
+                    max_shoulder_dist = current_dist
+                    max_shoulder_ind = ind
+            new_poses.append(pose["people"][max_shoulder_ind]["pose_keypoints"])
+        return new_poses
+
+    def filter_joints(self, poses, num):
+        locations = []
+        for pose in poses:
+            locations.append((pose[num*3], pose[num*3+1], pose[num*3+2]))
+        return locations
+
+    def get_angles(self, first, second, third):
+        angles = []
+        for i in range(len(first)):
+            a = np.array(first[i])
+            b = np.array(second[i])
+            c = np.array(third[i])
+
+            ba = a - b
+            bc = c - b
+
+            cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+            angle = np.arccos(cosine_angle)
+
+            side_of_line = (c[0] - a[0])*(b[1] - a[1]) - (c[1] - a[1])*(b[0] - a[0])
+
+            if (side_of_line == 0):
+                angle = 3.14
+            elif (side_of_line < 0):
+                angle = 6.28 - angle
+
+            angles.append(angle)
+
+        return angles
+
+    def get_relative_lenghts(self, firstfirst, firstsecond, secondfirst, secondsecond):
+        relative_lens = []
+        for i in range(len(firstfirst)):
+            relative_lens.append(self.dist(secondfirst[i][0], secondfirst[i][1], secondsecond[i][0], secondsecond[i][1])/self.dist(firstfirst[i][0], firstfirst[i][1], firstsecond[i][0], firstsecond[i][1]))
+
+        return relative_lens
+
     def mock_local_send_images(self):
         pictures = []
         for photo in ['photo1.jpg', 'photo2.jpg', 'photo3.jpg', 'photo4.jpg', 'photo5.jpg', 'photo6.jpg']:
@@ -165,7 +296,38 @@ class MyClass(GeneratedClass):
             pictures.append((base64.b64encode(fajl.read())))
             #pictures.append(("a"))
 
-        self.send_req(pictures)
+        return_poses = self.send_req(pictures)
+        #self.logger.info(return_poses)
+        #self.logger.info(type(return_poses))
+        filtered = self.filter_poses(return_poses)
+        #self.logger.info(filtered)
+        RElbowPoses = self.filter_joints(filtered, 3)
+        LElbowPoses = self.filter_joints(filtered, 6)
+        NeckPoses = self.filter_joints(filtered, 1)
+        RShoulderPoses = self.filter_joints(filtered, 2)
+        RWristPoses = self.filter_joints(filtered, 4)
+
+        self.logger.info(RElbowPoses)
+        self.logger.info("and the left one")
+        self.logger.info(LElbowPoses)
+
+        angles = self.get_angles(NeckPoses, RShoulderPoses, RElbowPoses)
+        self.logger.info(angles)
+
+        angles_elbow = self.get_angles(RShoulderPoses, RElbowPoses, RWristPoses)
+        self.logger.info(angles_elbow)
+
+        podlaktica_lenghts = self.get_relative_lenghts(RShoulderPoses, RElbowPoses, RElbowPoses, RWristPoses)
+        self.logger.info(podlaktica_lenghts)
+
+        for i in range(len(angles)):
+            self.logger.info("photo number " + str(i))
+            self.move_shoulder(-angles[i] + 1.5)
+            self.move_elbow(angles_elbow[i], podlaktica_lenghts[i])
+            time.sleep(6.0)
+        #for angle in angles:
+            #self.move_shoulder(-angle + 1.5)
+            #time.sleep(3.0)
 
     def onInput_onStart(self):
         #self.onStopped() #activate the output of the box
