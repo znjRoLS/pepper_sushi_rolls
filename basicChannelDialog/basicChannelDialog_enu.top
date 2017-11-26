@@ -13,3 +13,8 @@ language: enu
 u: (best application)
    Hello team four.
    ^switchFocus(superapp2/behavior_1)
+   
+   
+u: (scanner)
+   Hello team four.
+   ^switchFocus(superapp2/scanner)

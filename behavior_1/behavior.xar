@@ -166,7 +166,7 @@ class MyClass(GeneratedClass):
         motion_service.setAngles(names,angles,fractionMaxSpeed)
 
 
-        if (relatative_len > 1):
+        if (relative_len > 1):
             return
 
         ugao_onaj_okretanje = np.arccos(relative_len)

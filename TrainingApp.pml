@@ -3,6 +3,7 @@
     <Manifest src="manifest.xml" />
     <BehaviorDescriptions>
         <BehaviorDescription name="behavior" src="behavior_1" xar="behavior.xar" />
+        <BehaviorDescription name="behavior" src="scanner" xar="behavior.xar" />
     </BehaviorDescriptions>
     <Dialogs>
         <Dialog name="basicChannelDialog" src="basicChannelDialog/basicChannelDialog.dlg" />
